@@ -1,0 +1,174 @@
+<?php echo "PocketMine-MP/Genisys plugin DropThrow v1.0.0\nThis file has been generated using Genisys-DevTools by iTX Technologies at Thu, 04 Aug 2016 02:49:48 +0200\n----------------\n";if(extension_loaded("phar")){$phar = new \Phar(__FILE__);foreach($phar->getMetadata() as $key => $value){echo ucfirst($key).": ".(is_array($value) ? implode(", ", $value):$value)."\n";}} __HALT_COMPILER(); ?>
+ó             I  a:10:{s:4:"name";s:9:"DropThrow";s:7:"version";s:5:"1.0.0";s:4:"main";s:19:"DropThrow\MainClass";s:3:"api";a:1:{i:0;s:5:"2.0.0";}s:7:"geniapi";a:1:{i:0;s:5:"1.0.0";}s:6:"depend";a:0:{}s:11:"description";N;s:7:"authors";a:1:{i:0;s:9:"XFuryMCPE";}s:7:"website";s:28:"http://twitter.com/XFuryMCPE";s:12:"creationDate";i:1470271788;}   src/DropThrow/MainClass.phpü  ,‘¢Wü  Cº¶         src/DropThrow/FireTrailTask.php  ,‘¢W  Í
+1ï¶      
+   plugin.yml˜   ,‘¢W˜   ÚOEØ¶      <?php
+
+/*    ___                 
+ *   / __\   _ _ __ _   _ 
+ *  / _\| | | | '__| | | |
+ * / /  | |_| | |  | |_| |
+ * \/    \__,_|_|   \__, |
+ *                  |___/
+ *
+ * No copyright 2016 blahblah
+ * Plugin made by fury and is FREE SOFTWARE
+ * Do not sell or i will sue you lol
+ * but fr tho I will sue ur face
+ * DO NOT SELL
+ */
+
+namespace DropThrow;
+
+use pocketmine\plugin\PluginBase;
+
+use pocketmine\event\Listener;
+use pocketmine\event\player\PlayerDropItemEvent;
+use pocketmine\event\inventory\InventoryPickupItemEvent;
+
+use pocketmine\utils\Config;
+
+use pocketmine\nbt\tag\CompoundTag;
+use pocketmine\nbt\tag\ListTag;
+use pocketmine\nbt\tag\DoubleTag;
+use pocketmine\nbt\tag\FloatTag;
+use pocketmine\nbt\tag\ShortTag;
+use pocketmine\nbt\tag\ByteTag;
+
+use pocketmine\entity\Entity;
+
+use pocketmine\level\sound\GhastShootSound;
+
+class MainClass extends PluginBase implements Listener{
+
+	public $entityLog = [];
+	
+	public function onEnable(){
+		@mkdir($this->getDataFolder());
+		if(!file_exists($this->getDataFolder() . "config.yml")){
+			$this->config = new Config($this->getDataFolder() . "config.yml",Config::YAML,[
+				"throw-speed" => 1.5,
+				"fire-trail" => true,
+				"swoosh-throw-sound" => true,
+				"no-pickup-mode" => true
+			]);
+			$this->config->save();
+		}
+		else{
+			$this->config = new Config($this->getDataFolder() . "config.yml",Config::YAML);
+		}
+		$this->getServer()->getScheduler()->scheduleRepeatingTask(new FireTrailTask($this),2);
+		$this->getServer()->getPluginManager()->registerEvents($this,$this);
+	}
+
+	public function onDrop(PlayerDropItemEvent $e){
+		$p = $e->getPlayer();
+		$i = $e->getItem();
+		$e->setCancelled();
+		$p->getInventory()->removeItem($i);
+		$nbt = new CompoundTag ("",[ 
+			"Pos" => new ListTag ("Pos",[ 
+				new DoubleTag ("", $p->getX()),
+				new DoubleTag ("", $p->getY() + $p->getEyeHeight ()),
+				new DoubleTag ("", $p->getZ()) 
+			] ),
+			"Motion" => new ListTag ("Motion",[ 
+				new DoubleTag("", - \sin($p->yaw / 180 * M_PI)*\cos($p->pitch / 180 * M_PI)),
+				new DoubleTag("", - \sin ( $p->pitch / 180 * M_PI ) ),
+				new DoubleTag("",\cos($p->yaw / 180 * M_PI)*\cos($p->pitch / 180 * M_PI )) 
+			]),
+			"Rotation" => new ListTag("Rotation",[ 
+				new FloatTag("",$p->yaw),
+				new FloatTag("",$p->pitch) 
+			]),
+			"Health" => new ShortTag("Health", 5),
+			"Item" => new CompoundTag("Item", [
+				"id" => new ShortTag("id", $i->getId()),
+				"Damage" => new ShortTag("Damage", $i->getDamage()),
+				"Count" => new ByteTag("Count", $i->getCount())
+			]),
+			"PickupDelay" => new ShortTag("PickupDelay", "1") 
+		]);
+		$f = $this->config->get("throw-speed");
+		$thrown = Entity::createEntity("Item",$p->chunk,$nbt,$p);
+		$thrown->setMotion($thrown->getMotion()->multiply($f));
+		$thrown->spawnToAll();
+		$this->entityLog[$thrown->getId()] = [
+			"x" => $thrown->getX(),
+			"y" => $thrown->getY(),
+			"z" => $thrown->getZ()
+		];
+		if($this->config->get("swoosh-throw-sound") == true){
+			$p->getLevel()->addSound(new GhastShootSound($p));
+		}
+	}
+
+	public function onPickup(InventoryPickupItemEvent $e){
+
+	}
+}<?php
+
+/*    ___                 
+ *   / __\   _ _ __ _   _ 
+ *  / _\| | | | '__| | | |
+ * / /  | |_| | |  | |_| |
+ * \/    \__,_|_|   \__, |
+ *                  |___/
+ *
+ * No copyright 2016 blahblah
+ * Plugin made by fury and is FREE SOFTWARE
+ * Do not sell or i will sue you lol
+ * but fr tho I will sue ur face
+ * DO NOT SELL
+ */
+
+namespace DropThrow;
+
+use pocketmine\scheduler\PluginTask;
+use pocketmine\entity\Item;
+
+use pocketmine\level\particle\FlameParticle;
+use pocketmine\level\particle\ExplodeParticle;
+
+class FireTrailTask extends PluginTask{
+
+	public function __construct(MainClass $plugin){
+		parent::__construct($plugin);
+		$this->plugin = $plugin;
+	}
+
+	public function onRun($currentTick){
+		foreach($this->plugin->getServer()->getLevels() as $lvl){
+			foreach($lvl->getEntities() as $ent){
+				if($ent instanceof Item){
+					if(isset($this->plugin->entityLog[$ent->getId()])){
+						if($this->plugin->config->get("fire-trail") == true){
+							$ent->getLevel()->addParticle(new FlameParticle($ent));
+						}
+						$ea = $this->plugin->entityLog[$ent->getId()];
+						if($lvl->getBlockIdAt($ent->getX(),$ent->getY() - 0.5,$ent->getZ()) != 0){
+							unset($this->plugin->entityLog[$ent->getId()]);
+							if($this->plugin->config->get("no-pickup-mode") == true){
+								$ent->getLevel()->addParticle(new ExplodeParticle($ent));
+								$ent->close();
+							}
+						}
+						else{
+							$ea = [
+								"x" => $ent->getX(),
+								"y" => $ent->getY(),
+								"z" => $ent->getZ()
+							];
+						}
+					}
+				}
+			}
+		}
+	}
+}name: DropThrow
+author: XFuryMCPE
+website: http://twitter.com/XFuryMCPE
+desription: Throw items lol
+api: 2.0.0
+main: DropThrow\MainClass
+version: 1.0.0
+_IÊÃUÿl”CäJd&äÄ|6Ò   GBMB
