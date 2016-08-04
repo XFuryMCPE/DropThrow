@@ -1,0 +1,7 @@
+name: DropThrow
+author: XFuryMCPE
+website: http://twitter.com/XFuryMCPE
+desription: Throw items lol
+api: 2.0.0
+main: DropThrow\MainClass
+version: 1.0.0
