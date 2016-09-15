@@ -42,7 +42,7 @@ class MainClass extends PluginBase implements Listener{
 	public function onEnable(){
 		@mkdir($this->getDataFolder());
 		if(!file_exists($this->getDataFolder() . "config.yml")){
-			$this->config = new Config($this->getDataFolder() . "config.yml",Config::YAML,[
+			$this->config = new Config($this->getDataFolder() . "config.yml", Config::YAML,[
 				"throw-speed" => 1.5,
 				"fire-trail" => true,
 				"swoosh-throw-sound" => true,
@@ -51,10 +51,10 @@ class MainClass extends PluginBase implements Listener{
 			$this->config->save();
 		}
 		else{
-			$this->config = new Config($this->getDataFolder() . "config.yml",Config::YAML);
+			$this->config = new Config($this->getDataFolder() . "config.yml", Config::YAML);
 		}
-		$this->getServer()->getScheduler()->scheduleRepeatingTask(new FireTrailTask($this),2);
-		$this->getServer()->getPluginManager()->registerEvents($this,$this);
+		$this->getServer()->getScheduler()->scheduleRepeatingTask(new FireTrailTask($this), 2);
+		$this->getServer()->getPluginManager()->registerEvents($this, $this);
 	}
 
 	public function onDrop(PlayerDropItemEvent $e){
@@ -62,20 +62,20 @@ class MainClass extends PluginBase implements Listener{
 		$i = $e->getItem();
 		$e->setCancelled();
 		$p->getInventory()->removeItem($i);
-		$nbt = new CompoundTag ("",[ 
-			"Pos" => new ListTag ("Pos",[ 
-				new DoubleTag ("", $p->getX()),
-				new DoubleTag ("", $p->getY() + $p->getEyeHeight ()),
-				new DoubleTag ("", $p->getZ()) 
-			] ),
-			"Motion" => new ListTag ("Motion",[ 
-				new DoubleTag("", - \sin($p->yaw / 180 * M_PI)*\cos($p->pitch / 180 * M_PI)),
-				new DoubleTag("", - \sin ( $p->pitch / 180 * M_PI ) ),
-				new DoubleTag("",\cos($p->yaw / 180 * M_PI)*\cos($p->pitch / 180 * M_PI )) 
+		$nbt = new CompoundTag ("", [ 
+			"Pos" => new ListTag("Pos", [ 
+				new DoubleTag("", $p->getX()),
+				new DoubleTag("", $p->getY() + $p->getEyeHeight()),
+				new DoubleTag("", $p->getZ()) 
+			]),
+			"Motion" => new ListTag("Motion", [ 
+				new DoubleTag("", -sin($p->yaw / 180 * M_PI) * cos($p->pitch / 180 * M_PI)),
+				new DoubleTag("", -sin($p->pitch / 180 * M_PI)),
+				new DoubleTag("", cos($p->yaw / 180 * M_PI) * cos($p->pitch / 180 * M_PI)) 
 			]),
 			"Rotation" => new ListTag("Rotation",[ 
-				new FloatTag("",$p->yaw),
-				new FloatTag("",$p->pitch) 
+				new FloatTag("", $p->yaw),
+				new FloatTag("", $p->pitch) 
 			]),
 			"Health" => new ShortTag("Health", 5),
 			"Item" => new CompoundTag("Item", [
@@ -83,10 +83,10 @@ class MainClass extends PluginBase implements Listener{
 				"Damage" => new ShortTag("Damage", $i->getDamage()),
 				"Count" => new ByteTag("Count", $i->getCount())
 			]),
-			"PickupDelay" => new ShortTag("PickupDelay", "1") 
+			"PickupDelay" => new ShortTag("PickupDelay", 1) 
 		]);
 		$f = $this->config->get("throw-speed");
-		$thrown = Entity::createEntity("Item",$p->chunk,$nbt,$p);
+		$thrown = Entity::createEntity("Item", $p->chunk, $nbt, $p);
 		$thrown->setMotion($thrown->getMotion()->multiply($f));
 		$thrown->spawnToAll();
 		$this->entityLog[$thrown->getId()] = [
